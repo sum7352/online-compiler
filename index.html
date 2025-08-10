@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Online Code Compiler</title>
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- CodeMirror CSS -->
+  <link rel="stylesheet" href="/codemirror/codemirror-5.65.19/lib/codemirror.css">
+  <link rel="stylesheet" href="/codemirror/codemirror-5.65.19/theme/dracula.css">
+
+  <!-- CodeMirror JS -->
+  <script src="/codemirror/codemirror-5.65.19/lib/codemirror.js"></script>
+  <script src="/codemirror/codemirror-5.65.19/mode/clike/clike.js"></script>
+  <script src="/codemirror/codemirror-5.65.19/mode/python/python.js"></script>
+  <script src="/codemirror/codemirror-5.65.19/addon/edit/closebrackets.js"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      background-color: #1e1e1e;
+      color: #fff;
+      font-family: 'Fira Code', monospace;
+    }
+
+    .header-bar {
+      background-color: #2d2d2d;
+      padding: 1rem;
+      border-bottom: 1px solid #444;
+    }
+
+    .header-bar h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      color: #0dcaf0;
+    }
+
+    .form-select, .btn {
+      font-size: 0.9rem;
+    }
+
+    .editor-wrapper {
+      border: 1px solid #444;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+
+    .CodeMirror {
+      height: 500px;
+      font-size: 15px;
+      border-radius: 4px;
+    }
+
+    .section-box {
+      background-color: #2d2d2d;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    textarea {
+      background-color: #1e1e1e;
+      color: #0f0;
+      resize: none;
+      font-size: 14px;
+    }
+
+    #run {
+      transition: all 0.2s;
+    }
+
+    #run:hover {
+      transform: scale(1.1);
+      background-color: #198754;
+    }
+
+    .form-label {
+      color: #ccc;
+    }
+
+    .CodeMirror-scroll {
+      background-color: #1e1e1e;
+    }
+
+    .powered-by {
+      font-size: 12px;
+      text-align: center;
+      color: #888;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Header -->
+  <div class="header-bar d-flex justify-content-between align-items-center">
+    <h1>🧠 Online Code Compiler</h1>
+    <div class="d-flex align-items-center gap-2">
+      <select class="form-select text-bg-dark border-secondary" id="languageSelect">
+        <option disabled selected>Select Language</option>
+        <option value="cpp">C++</option>
+        <option value="java">Java</option>
+        <option value="python">Python</option>
+      </select>
+      <button type="button" id="run" class="btn btn-success">
+        <i class="bi bi-play-fill"></i> Run
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="container-fluid mt-4 px-4">
+    <div class="row">
+      <!-- Code Editor -->
+      <div class="col-md-8">
+        <div class="editor-wrapper">
+          <textarea id="editor"></textarea>
+        </div>
+      </div>
+
+      <!-- Input / Output -->
+      <div class="col-md-4">
+        <div class="section-box">
+          <label for="inputBox" class="form-label">Custom Input</label>
+          <textarea id="inputBox" class="form-control mb-3" rows="6" placeholder="Enter input if needed..."></textarea>
+
+          <label for="outputBox" class="form-label">Output</label>
+          <textarea id="outputBox" class="form-control" rows="6" readonly placeholder="Output will appear here..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="powered-by">🚀 Powered by Node.js, Express & CompileX</div>
+  </div>
+
+  <!-- JavaScript Logic -->
+  <script>
+    const editor = CodeMirror.fromTextArea(document.getElementById("editor"), {
+      mode: "text/x-c++src",
+      theme: "dracula",
+      lineNumbers: true,
+      autoCloseBrackets: true
+    });
+    editor.setSize("100%", "500px");
+
+    const runButton = document.getElementById("run");
+    const inputBox = document.getElementById("inputBox");
+    const outputBox = document.getElementById("outputBox");
+    const languageSelect = document.getElementById("languageSelect");
+
+    // Update CodeMirror mode based on language selection
+    languageSelect.addEventListener("change", function () {
+      const lang = this.value;
+      if (lang === "cpp") {
+        editor.setOption("mode", "text/x-c++src");
+      } else if (lang === "java") {
+        editor.setOption("mode", "text/x-java");
+      } else if (lang === "python") {
+        editor.setOption("mode", "python");
+      }
+    });
+
+    // Run code
+    runButton.addEventListener("click", async function () {
+      const lang = languageSelect.value;
+      if (!lang) {
+        alert("Please select a language.");
+        return;
+      }
+
+      const codePayload = {
+        code: editor.getValue(),
+        input: inputBox.value,
+        lang: lang
+      };
+
+      try {
+        const response = await fetch("http://localhost:8000/compile", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(codePayload)
+        });
+
+        const result = await response.json();
+        outputBox.value = result.output || "No output returned.";
+      } catch (err) {
+        console.error(err);
+        outputBox.value = "⚠️ Error connecting to the server.";
+      }
+    });
+  </script>
+
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+</body>
+</html>
